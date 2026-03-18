@@ -772,10 +772,10 @@ def format_output(
     devmode: bool,
     bracket: str = "FRESH",
     context_remaining: Optional[float] = None,
-    bracket_rules: Optional[list] = None,
-    command_rules: Optional[dict] = None,
+    bracket_rules: Optional[list[str]] = None,
+    command_rules: Optional[dict[str, list[str]]] = None,
     global_disabled: bool = False,
-    domains_with_files: Optional[set] = None,
+    domains_with_files: Optional[set[str]] = None,
     context_enabled: bool = True
 ) -> str:
     """
