@@ -307,6 +307,22 @@ CARL provides structure, not opinions. The default domains are examples — cust
 
 ---
 
+## Ecosystem
+
+CARL is part of a broader Claude Code extension ecosystem:
+
+| System | What It Does | Link |
+|--------|-------------|------|
+| **AEGIS** | Multi-agent codebase auditing — diagnosis + controlled evolution | [GitHub](https://github.com/ChristopherKahler/aegis) |
+| **BASE** | Builder's Automated State Engine — workspace lifecycle, health tracking, drift prevention | [GitHub](https://github.com/ChristopherKahler/base) |
+| **CARL** | Context Augmentation & Reinforcement Layer — dynamic rules loaded JIT by intent | You are here |
+| **PAUL** | Project orchestration — Plan, Apply, Unify Loop | [GitHub](https://github.com/ChristopherKahler/paul) |
+| **SEED** | Typed project incubator — guided ideation through graduation into buildable projects | [GitHub](https://github.com/ChristopherKahler/seed) |
+| **Skillsmith** | Skill builder — standardized syntax specs + guided workflows for Claude Code skills | [GitHub](https://github.com/ChristopherKahler/skillsmith) |
+| **CC Strategic AI** | Skool community — courses, community, live support | [Skool](https://skool.com/cc-strategic-ai) |
+
+---
+
 ## What's Included
 
 ```
