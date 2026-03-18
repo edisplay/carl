@@ -25,6 +25,7 @@ import re
 import subprocess
 from pathlib import Path
 from datetime import datetime, timedelta
+from typing import Optional
 
 
 CARL_FOLDER = '.carl'
@@ -51,7 +52,7 @@ def get_sessions_path(carl_path: Path) -> Path:
     return sessions_path
 
 
-def load_session_config(carl_path: Path, session_id: str) -> dict | None:
+def load_session_config(carl_path: Path, session_id: str) -> Optional[dict]:
     """
     Load session config from .carl/sessions/{session_id}.json
     Returns None if session doesn't exist.
@@ -199,7 +200,7 @@ def merge_manifest_with_session(
     domains: dict,
     global_exclude: list[str],
     devmode: bool,
-    session_config: dict | None
+    session_config: Optional[dict]
 ) -> tuple[dict, list[str], bool]:
     """
     Merge global manifest settings with session-specific overrides.
@@ -234,7 +235,7 @@ def merge_manifest_with_session(
     return merged_domains, global_exclude, effective_devmode
 
 
-def generate_title_from_transcript(session_id: str, cwd: str) -> str | None:
+def generate_title_from_transcript(session_id: str, cwd: str) -> Optional[str]:
     """
     Generate a session title from the first user message in the transcript.
     Returns truncated first message or None if can't read.
@@ -349,7 +350,7 @@ def generate_title_from_transcript(session_id: str, cwd: str) -> str | None:
     return None
 
 
-def get_or_create_session(carl_path: Path, session_id: str, cwd: str) -> dict | None:
+def get_or_create_session(carl_path: Path, session_id: str, cwd: str) -> Optional[dict]:
     """
     Get existing session config or create new one.
     Also triggers stale session cleanup periodically.
@@ -396,7 +397,7 @@ def get_or_create_session(carl_path: Path, session_id: str, cwd: str) -> dict | 
 # CONTEXT PERCENTAGE AND BRACKET
 # =============================================================================
 
-def get_context_percentage(input_data: dict) -> float | None:
+def get_context_percentage(input_data: dict) -> Optional[float]:
     """
     Get current context percentage remaining by reading session JSONL file.
     Returns None if cannot determine.
@@ -459,7 +460,7 @@ def get_context_percentage(input_data: dict) -> float | None:
     return None
 
 
-def get_active_bracket(context_remaining: float | None) -> str:
+def get_active_bracket(context_remaining: Optional[float]) -> str:
     """
     Determine bracket from context percentage.
     Returns FRESH, MODERATE, DEPLETED, or CRITICAL.
@@ -770,11 +771,11 @@ def format_output(
     global_excluded: list[str],
     devmode: bool,
     bracket: str = "FRESH",
-    context_remaining: float | None = None,
-    bracket_rules: list[str] | None = None,
-    command_rules: dict[str, list[str]] | None = None,
+    context_remaining: Optional[float] = None,
+    bracket_rules: Optional[list] = None,
+    command_rules: Optional[dict] = None,
     global_disabled: bool = False,
-    domains_with_files: set[str] | None = None,
+    domains_with_files: Optional[set] = None,
     context_enabled: bool = True
 ) -> str:
     """
