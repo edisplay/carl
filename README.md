@@ -96,7 +96,9 @@ The installer prompts you to choose:
 
 ~/.claude/
 ├── hooks/carl-hook.py     # The injection engine
-└── settings.json          # Hook + MCP registration
+└── settings.json          # Hook registration
+
+~/.mcp.json                    # MCP server registration
 ```
 
 ### Staying Updated

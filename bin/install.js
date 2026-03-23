@@ -90,7 +90,8 @@ if (hasHelp) {
     hooks/carl-hook.py     - Rule injection hook (v2, JSON-based)
     .carl/carl.json        - Domain rules, decisions, config
     .carl/carl-mcp/        - MCP server for runtime management
-    settings.json          - Hook + MCP registration (merged)
+    settings.json          - Hook registration (merged)
+    .mcp.json              - MCP server registration
     CLAUDE.md              - CARL integration block (optional)
 
   ${yellow}v1 Migration:${reset}
@@ -186,33 +187,35 @@ function wireHook(claudeDir, hookPath) {
 }
 
 /**
- * Wire MCP server into settings.json
+ * Wire MCP server into .mcp.json at the workspace root
+ * MCPs go in .mcp.json, not settings.json
  */
-function wireMcp(claudeDir, mcpIndexPath) {
-  const settingsPath = path.join(claudeDir, 'settings.json');
-  let settings = {};
+function wireMcp(workspaceDir, mcpIndexPath) {
+  const mcpJsonPath = path.join(workspaceDir, '.mcp.json');
+  let mcpConfig = {};
 
-  if (fs.existsSync(settingsPath)) {
+  if (fs.existsSync(mcpJsonPath)) {
     try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
     } catch (e) {
-      // Already warned in wireHook
+      console.log(`  ${yellow}Warning: Could not parse existing .mcp.json, creating new${reset}`);
     }
   }
 
-  if (!settings.mcpServers) {
-    settings.mcpServers = {};
+  if (!mcpConfig.mcpServers) {
+    mcpConfig.mcpServers = {};
   }
 
   const normalizedPath = mcpIndexPath.replace(/\\/g, '/');
 
-  settings.mcpServers['carl-mcp'] = {
+  mcpConfig.mcpServers['carl-mcp'] = {
     command: 'node',
-    args: [normalizedPath]
+    args: [normalizedPath],
+    type: 'stdio'
   };
 
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-  console.log(`  ${green}✓${reset} Wired carl-mcp in settings.json`);
+  fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));
+  console.log(`  ${green}✓${reset} Wired carl-mcp in .mcp.json`);
 }
 
 /**
@@ -358,9 +361,10 @@ function install(isGlobal, addToClaudeMd = true) {
   // 4. Wire hook into settings.json
   wireHook(claudeDir, hookDest);
 
-  // 5. Wire MCP into settings.json
+  // 5. Wire MCP into .mcp.json (at workspace root, not settings.json)
   if (mcpIndexPath) {
-    wireMcp(claudeDir, mcpIndexPath);
+    const mcpRoot = isGlobal ? os.homedir() : process.cwd();
+    wireMcp(mcpRoot, mcpIndexPath);
   }
 
   // 6. Add CARL block to CLAUDE.md (if requested)

@@ -89,11 +89,21 @@ Edit `~/.claude/settings.json` (create if it doesn't exist):
         ]
       }
     ]
-  },
+  }
+}
+```
+
+### Step 6: Configure MCP in .mcp.json
+
+Create `~/.mcp.json` (or `.mcp.json` in your project root for local):
+
+```json
+{
   "mcpServers": {
     "carl-mcp": {
       "command": "node",
-      "args": ["/home/YOUR_USERNAME/.carl/carl-mcp/index.js"]
+      "args": ["/home/YOUR_USERNAME/.carl/carl-mcp/index.js"],
+      "type": "stdio"
     }
   }
 }
@@ -139,7 +149,8 @@ All of these should exist:
 
 ```
 ~/.claude/hooks/carl-hook.py         # v2 hook
-~/.claude/settings.json              # Hook + MCP configured
+~/.claude/settings.json              # Hook configured
+~/.mcp.json                          # MCP configured
 ~/.carl/carl.json                    # Domain rules and config
 ~/.carl/carl-mcp/index.js           # MCP server
 ~/.carl/carl-mcp/node_modules/      # MCP dependencies
