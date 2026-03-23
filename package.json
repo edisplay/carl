@@ -1,6 +1,6 @@
 {
   "name": "carl-core",
-  "version": "1.0.9",
+  "version": "2.0.0",
   "description": "Context Augmentation & Reinforcement Layer - Dynamic rules for Claude Code",
   "bin": {
     "carl-core": "bin/install.js"
@@ -8,7 +8,8 @@
   "files": [
     "bin",
     "hooks",
-    "resources",
+    "schemas",
+    "mcp",
     ".carl-template"
   ],
   "keywords": [

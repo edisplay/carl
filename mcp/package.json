@@ -1,0 +1,10 @@
+{
+  "name": "carl-mcp",
+  "version": "2.0.0",
+  "description": "CARL MCP Server - Domains, Decisions, PSMM, Staging, carl-json CRUD",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

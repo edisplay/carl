@@ -15,3 +15,9 @@ Thumbs.db
 
 # CARL session files (auto-generated, local to each machine)
 .carl/sessions/*.json
+
+# PAUL project state (per-machine)
+.paul/
+
+# Node modules in MCP
+mcp/node_modules/

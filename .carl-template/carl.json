@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "last_modified": null,
+  "config": {
+    "devmode": false,
+    "post_compact_gate": true,
+    "global_exclude": [],
+    "context_brackets": {
+      "FRESH": {
+        "enabled": true,
+        "rules": []
+      },
+      "MODERATE": {
+        "enabled": true,
+        "rules": [
+          "Keep responses focused — avoid unnecessary exploration",
+          "Prefer targeted edits over full file rewrites"
+        ]
+      },
+      "DEPLETED": {
+        "enabled": true,
+        "rules": [
+          "Minimize tool calls — batch aggressively",
+          "Skip verbose explanations — action over narration",
+          "Consider suggesting /compact or spawning a subagent for remaining work"
+        ]
+      }
+    },
+    "commands": {}
+  },
+  "domains": {
+    "GLOBAL": {
+      "state": "active",
+      "always_on": true,
+      "recall": ["universal"],
+      "exclude": [],
+      "rules": [
+        {
+          "id": 0,
+          "text": "NEVER use relative paths in code — use absolute. NEVER use absolute paths when referencing files to user — use relative.",
+          "added": null,
+          "last_reviewed": null,
+          "source": "template"
+        },
+        {
+          "id": 1,
+          "text": "NEVER run independent tool calls sequentially — batch them in parallel.",
+          "added": null,
+          "last_reviewed": null,
+          "source": "template"
+        },
+        {
+          "id": 2,
+          "text": "NEVER mark tasks complete without validation — test everything, require proof.",
+          "added": null,
+          "last_reviewed": null,
+          "source": "template"
+        }
+      ],
+      "decisions": []
+    },
+    "DEVELOPMENT": {
+      "state": "active",
+      "always_on": false,
+      "recall": ["write code for", "fix this bug", "implement this feature", "build this component", "refactor this", "add this endpoint", "programming task", "code review"],
+      "exclude": [],
+      "rules": [],
+      "decisions": []
+    }
+  },
+  "staging": []
+}

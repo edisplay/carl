@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const readline = require('readline');
+const { execSync } = require('child_process');
 
 // Colors (amber/orange theme like Claude Code)
 const amber = '\x1b[38;5;214m';
@@ -79,19 +80,22 @@ if (hasHelp) {
     ${dim}# Interactive install${reset}
     npx carl-core
 
-    ${dim}# Install globally${reset}
+    ${dim}# Install globally (recommended)${reset}
     npx carl-core --global
 
     ${dim}# Install to current project only${reset}
     npx carl-core --local
 
   ${yellow}What gets installed:${reset}
-    hooks/carl-hook.py     - The rule injection engine
-    commands/carl/         - Slash commands (/carl:manager)
-    skills/carl-manager/   - Domain management helpers
-    .carl/                 - Your rule configuration
-    settings.json          - Hook registration (merged)
+    hooks/carl-hook.py     - Rule injection hook (v2, JSON-based)
+    .carl/carl.json        - Domain rules, decisions, config
+    .carl/carl-mcp/        - MCP server for runtime management
+    settings.json          - Hook + MCP registration (merged)
     CLAUDE.md              - CARL integration block (optional)
+
+  ${yellow}v1 Migration:${reset}
+    If upgrading from v1 (flat-file manifest), run:
+    ${dim}bash node_modules/carl-core/bin/migrate-v1-to-v2.sh ~/.carl${reset}
 `);
   process.exit(0);
 }
@@ -154,16 +158,13 @@ function wireHook(claudeDir, hookPath) {
   const normalizedPath = hookPath.replace(/\\/g, '/');
   const hookCommand = `python3 ${normalizedPath}`;
 
-  // Check if CARL hook already exists (check both structures: {type,command} and {hooks:[...]})
+  // Check if CARL hook already exists
   const existingIndex = settings.hooks.UserPromptSubmit.findIndex(h => {
-    // Direct structure: { type, command }
     if (h.command && h.command.includes('carl-hook.py')) return true;
-    // Nested structure: { hooks: [{ type, command }] }
     if (h.hooks && h.hooks.some(inner => inner.command && inner.command.includes('carl-hook.py'))) return true;
     return false;
   });
 
-  // New hook format: { hooks: [{ type, command }] }
   const newHookEntry = {
     hooks: [
       {
@@ -185,45 +186,65 @@ function wireHook(claudeDir, hookPath) {
 }
 
 /**
+ * Wire MCP server into settings.json
+ */
+function wireMcp(claudeDir, mcpIndexPath) {
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  let settings = {};
+
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch (e) {
+      // Already warned in wireHook
+    }
+  }
+
+  if (!settings.mcpServers) {
+    settings.mcpServers = {};
+  }
+
+  const normalizedPath = mcpIndexPath.replace(/\\/g, '/');
+
+  settings.mcpServers['carl-mcp'] = {
+    command: 'node',
+    args: [normalizedPath]
+  };
+
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  console.log(`  ${green}✓${reset} Wired carl-mcp in settings.json`);
+}
+
+/**
  * Add CARL block to CLAUDE.md
  */
 function addCarlBlock(claudeMdPath) {
-  console.log(`  ${dim}Checking: ${claudeMdPath}${reset}`);
-
   let content = '';
   let fileExists = fs.existsSync(claudeMdPath);
 
   if (fileExists) {
     content = fs.readFileSync(claudeMdPath, 'utf8');
 
-    // Check if CARL block already exists (normalize line endings for cross-platform)
     const normalizedContent = content.replace(/\r\n/g, '\n');
     if (normalizedContent.includes('<!-- CARL-MANAGED:')) {
       console.log(`  ${dim}CARL block already in CLAUDE.md${reset}`);
       return false;
     }
-    console.log(`  ${dim}Existing CLAUDE.md found (${content.length} bytes), adding CARL block${reset}`);
   } else {
-    console.log(`  ${dim}No CLAUDE.md found, creating with CARL block${reset}`);
-    // Ensure parent directory exists
     const parentDir = path.dirname(claudeMdPath);
     if (!fs.existsSync(parentDir)) {
       fs.mkdirSync(parentDir, { recursive: true });
     }
-    // Create minimal CLAUDE.md with CARL block
     content = `# Claude Code Configuration\n\n${CARL_BLOCK}\n`;
     fs.writeFileSync(claudeMdPath, content);
     return true;
   }
 
-  // Find insertion point (after first heading or at top)
-  const lines = content.split(/\r?\n/);  // Handle both Windows and Unix line endings
+  const lines = content.split(/\r?\n/);
   let insertIndex = 0;
 
-  // Skip to after first heading and its description
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith('#')) {
-      // Found first heading, skip past it and any immediate description
       insertIndex = i + 1;
       while (insertIndex < lines.length && lines[insertIndex].trim() !== '' && !lines[insertIndex].startsWith('#')) {
         insertIndex++;
@@ -232,11 +253,41 @@ function addCarlBlock(claudeMdPath) {
     }
   }
 
-  // Insert CARL block
   lines.splice(insertIndex, 0, '', CARL_BLOCK, '');
   fs.writeFileSync(claudeMdPath, lines.join('\n'));
 
   return true;
+}
+
+/**
+ * Install MCP server
+ */
+function installMcp(carlDir, src) {
+  const mcpDest = path.join(carlDir, 'carl-mcp');
+  const mcpSrc = path.join(src, 'mcp');
+
+  if (!fs.existsSync(mcpSrc)) {
+    console.log(`  ${yellow}Warning: MCP source not found, skipping${reset}`);
+    return null;
+  }
+
+  // Copy MCP files
+  copyDir(mcpSrc, mcpDest);
+  console.log(`  ${green}✓${reset} Installed carl-mcp`);
+
+  // Run npm install for MCP dependencies
+  try {
+    execSync('npm install --production --silent', {
+      cwd: mcpDest,
+      stdio: 'pipe'
+    });
+    console.log(`  ${green}✓${reset} Installed MCP dependencies`);
+  } catch (e) {
+    console.log(`  ${yellow}Warning: npm install failed for carl-mcp. Run manually:${reset}`);
+    console.log(`  ${dim}cd ${mcpDest} && npm install${reset}`);
+  }
+
+  return path.join(mcpDest, 'index.js');
 }
 
 /**
@@ -272,40 +323,45 @@ function install(isGlobal, addToClaudeMd = true) {
   const hookDest = path.join(hooksDir, 'carl-hook.py');
   fs.copyFileSync(hookSrc, hookDest);
   fs.chmodSync(hookDest, '755');
-  console.log(`  ${green}✓${reset} Installed hooks/carl-hook.py`);
+  console.log(`  ${green}✓${reset} Installed hooks/carl-hook.py (v2)`);
 
-  // 2. Copy commands
-  const commandsDir = path.join(claudeDir, 'commands');
-  fs.mkdirSync(commandsDir, { recursive: true });
-  const commandsSrc = path.join(src, 'resources', 'commands', 'carl');
-  const commandsDest = path.join(commandsDir, 'carl');
-  copyDir(commandsSrc, commandsDest);
-  console.log(`  ${green}✓${reset} Installed commands/carl`);
-
-  // 3. Copy skills
-  const skillsDir = path.join(claudeDir, 'skills');
-  fs.mkdirSync(skillsDir, { recursive: true });
-  const skillsSrc = path.join(src, 'resources', 'skills');
-  if (fs.existsSync(skillsSrc)) {
-    const skillFolders = fs.readdirSync(skillsSrc, { withFileTypes: true })
-      .filter(d => d.isDirectory());
-    for (const folder of skillFolders) {
-      copyDir(path.join(skillsSrc, folder.name), path.join(skillsDir, folder.name));
-    }
-    console.log(`  ${green}✓${reset} Installed skills`);
-  }
-
-  // 4. Copy .carl-template to .carl
+  // 2. Copy .carl-template to .carl (carl.json + sessions/)
   const carlTemplateSrc = path.join(src, '.carl-template');
   if (!fs.existsSync(carlDir)) {
     copyDir(carlTemplateSrc, carlDir);
-    console.log(`  ${green}✓${reset} Created ${carlLabel}`);
+    // Stamp the install date in carl.json
+    const carlJsonPath = path.join(carlDir, 'carl.json');
+    if (fs.existsSync(carlJsonPath)) {
+      try {
+        const carlJson = JSON.parse(fs.readFileSync(carlJsonPath, 'utf8'));
+        carlJson.last_modified = new Date().toISOString();
+        fs.writeFileSync(carlJsonPath, JSON.stringify(carlJson, null, 2));
+      } catch (e) {
+        // Non-critical, continue
+      }
+    }
+    console.log(`  ${green}✓${reset} Created ${carlLabel}/carl.json`);
+  } else if (!fs.existsSync(path.join(carlDir, 'carl.json'))) {
+    // .carl/ exists but no carl.json — v1 user, copy template
+    const carlJsonSrc = path.join(carlTemplateSrc, 'carl.json');
+    const carlJsonDest = path.join(carlDir, 'carl.json');
+    fs.copyFileSync(carlJsonSrc, carlJsonDest);
+    console.log(`  ${green}✓${reset} Added carl.json to existing ${carlLabel}`);
+    console.log(`  ${yellow}Note: Existing v1 files detected. Run migrate-v1-to-v2.sh to convert.${reset}`);
   } else {
-    console.log(`  ${dim}${carlLabel} already exists, skipping${reset}`);
+    console.log(`  ${dim}${carlLabel}/carl.json already exists, skipping${reset}`);
   }
 
-  // 5. Wire hook into settings.json
+  // 3. Install MCP server
+  const mcpIndexPath = installMcp(carlDir, src);
+
+  // 4. Wire hook into settings.json
   wireHook(claudeDir, hookDest);
+
+  // 5. Wire MCP into settings.json
+  if (mcpIndexPath) {
+    wireMcp(claudeDir, mcpIndexPath);
+  }
 
   // 6. Add CARL block to CLAUDE.md (if requested)
   if (addToClaudeMd && !skipClaudeMd) {
@@ -318,12 +374,18 @@ function install(isGlobal, addToClaudeMd = true) {
   console.log(`
   ${green}Done!${reset} Restart Claude Code to activate.
 
-  ${amber}Quick start:${reset}
-    ${dim}*carl${reset}          - Interactive help
-    ${dim}/carl:manager${reset}  - Manage domains and rules
+  ${amber}What's installed:${reset}
+    ${dim}${carlLabel}/carl.json${reset}      - Your rules, decisions, and config
+    ${dim}${carlLabel}/carl-mcp/${reset}      - MCP server for runtime management
+    ${dim}${locationLabel}/hooks/${reset}      - Rule injection hook
 
-  ${amber}Learn more:${reset}
-    ${dim}Type *carl in any prompt for guided help${reset}
+  ${amber}MCP tools available:${reset}
+    ${dim}carl_v2_list_domains${reset}    - View all domains
+    ${dim}carl_v2_add_rule${reset}        - Add a rule to a domain
+    ${dim}carl_v2_log_decision${reset}    - Log a decision
+
+  ${amber}Upgrading from v1?${reset}
+    ${dim}bash node_modules/carl-core/bin/migrate-v1-to-v2.sh ${carlLabel}${reset}
 `);
 }
 
