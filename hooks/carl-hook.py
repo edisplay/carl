@@ -640,7 +640,13 @@ def main():
             star_commands = detect_star_commands(user_prompt)
             for cmd in star_commands:
                 if cmd in all_commands:
-                    command_rules[cmd] = all_commands[cmd]
+                    cmd_data = all_commands[cmd]
+                    if isinstance(cmd_data, dict) and 'rules' in cmd_data:
+                        command_rules[cmd] = cmd_data['rules']
+                    elif isinstance(cmd_data, list):
+                        command_rules[cmd] = cmd_data
+                    else:
+                        command_rules[cmd] = cmd_data
 
     # Match domains to prompt
     matched_keywords = {}
